@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CraftLaunch — Minecraft Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #080b10;
+    --bg2:         #0d1119;
+    --bg3:         #141c28;
+    --card:        #111722;
+    --border:      #1e2a40;
+    --green:       #4ade80;
+    --green-dim:   #22543d;
+    --blue:        #60a5fa;
+    --yellow:      #fbbf24;
+    --text:        #e2e8f4;
+    --muted:       #556070;
+    --radius:      12px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ── Noise overlay ────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.35;
+  }
+
+  /* ── Grid background ──────────────────────────────────────── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Scrollbar ────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Layout ───────────────────────────────────────────────── */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     NAV
+  ══════════════════════════════════════════════════════════ */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(8, 11, 16, 0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+  }
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--green);
+    text-decoration: none;
+    letter-spacing: .02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .nav-logo .hex { font-size: 1.4rem; }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: .8rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    color: var(--green);
+    border: 1px solid var(--green-dim);
+    padding: 4px 12px;
+    border-radius: 100px;
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+  @keyframes pulse-badge {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .6; }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     HERO
+  ══════════════════════════════════════════════════════════ */
+  .hero {
+    min-height: 88vh;
+    display: flex;
+    align-items: center;
+    padding: 80px 0 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  /* radial glow behind hero */
+  .hero-glow {
+    position: absolute;
+    width: 800px; height: 800px;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -60%);
+    background: radial-gradient(circle, rgba(74,222,128,.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+  .hero-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: .78rem;
+    color: var(--green);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 28px; height: 1px;
+    background: var(--green);
+  }
+  h1 {
+    font-size: clamp(2.6rem, 5vw, 4.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.02em;
+    margin-bottom: 24px;
+  }
+  h1 .accent { color: var(--green); }
+  h1 .dim     { color: var(--muted); }
+  .hero-desc {
+    font-size: 1.05rem;
+    color: var(--muted);
+    line-height: 1.75;
+    margin-bottom: 40px;
+    max-width: 460px;
+  }
+  .btn-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    border: none;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary {
+    background: var(--green);
+    color: #020804;
+    box-shadow: 0 0 24px rgba(74,222,128,.35);
+  }
+  .btn-primary:hover { box-shadow: 0 0 40px rgba(74,222,128,.5); }
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--muted); }
+
+  /* Mockup window */
+  .hero-mockup {
+    position: relative;
+  }
+  .mockup-window {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+      0 40px 80px rgba(0,0,0,.6),
+      0 0 0 1px rgba(74,222,128,.06),
+      0 0 60px rgba(74,222,128,.06);
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-8px); }
+  }
+  .window-bar {
+    background: #0a0e15;
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+  .window-title {
+    flex: 1;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    color: var(--muted);
+  }
+  .window-body { padding: 20px; display: flex; gap: 16px; }
+  .mock-left {
+    flex: 0 0 200px;
+    background: #0d1119;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid var(--border);
+  }
+  .mock-field {
+    height: 28px;
+    background: #080b10;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .mock-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+    color: var(--muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .mock-select {
+    height: 28px;
+    background: #080b10;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+  .mock-select-text {
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+    color: var(--green);
+  }
+  .mock-launch {
+    height: 34px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    font-weight: 700;
+    color: #020b04;
+    box-shadow: 0 0 16px rgba(74,222,128,.4);
+  }
+  .mock-right {
+    flex: 1;
+    background: #050708;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 12px;
+    overflow: hidden;
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+  }
+  .mock-log { display: flex; flex-direction: column; gap: 4px; }
+  .log-line { display: flex; gap: 6px; }
+  .log-ok   { color: var(--green); }
+  .log-info { color: var(--blue); }
+  .log-text { color: #7a9060; }
+  .log-dim  { color: #2a3a2a; }
+
+  /* ══════════════════════════════════════════════════════════
+     FEATURES
+  ══════════════════════════════════════════════════════════ */
+  .section { padding: 100px 0; }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    color: var(--green);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin-bottom: 16px;
+  }
+  .section-sub {
+    color: var(--muted);
+    font-size: 1rem;
+    max-width: 520px;
+    margin-bottom: 60px;
+    line-height: 1.7;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .feat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    transition: border-color .2s, transform .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .feat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top left, rgba(74,222,128,.04), transparent 60%);
+    pointer-events: none;
+  }
+  .feat-card:hover { border-color: var(--green-dim); transform: translateY(-3px); }
+  .feat-icon {
+    font-size: 1.6rem;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .feat-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .feat-desc { font-size: .88rem; color: var(--muted); line-height: 1.65; }
+
+  /* ══════════════════════════════════════════════════════════
+     VERSIONS
+  ══════════════════════════════════════════════════════════ */
+  .versions-section { padding: 80px 0; background: var(--bg2); }
+  .versions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-top: 40px;
+  }
+  .ver-badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: .78rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: border-color .2s;
+  }
+  .ver-badge:hover { border-color: var(--green-dim); }
+  .ver-num { color: var(--text); font-weight: 700; }
+  .ver-tag { color: var(--muted); font-size: .65rem; }
+  .ver-tag.latest { color: var(--green); }
+  .ver-tag.snapshot { color: var(--yellow); }
+
+  /* ══════════════════════════════════════════════════════════
+     INSTALL
+  ══════════════════════════════════════════════════════════ */
+  .install-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 50px;
+    counter-reset: step;
+  }
+  .step-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    counter-increment: step;
+    position: relative;
+  }
+  .step-card::before {
+    content: "0" counter(step);
+    font-family: 'Space Mono', monospace;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: var(--border);
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    line-height: 1;
+  }
+  .step-title { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+  .step-desc  { font-size: .88rem; color: var(--muted); line-height: 1.65; }
+  .step-code {
+    margin-top: 14px;
+    background: #050708;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    color: var(--green);
+    overflow-x: auto;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     CTA BANNER
+  ══════════════════════════════════════════════════════════ */
+  .cta-banner {
+    margin: 80px 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 64px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(74,222,128,.1), transparent 60%);
+    pointer-events: none;
+  }
+  .cta-banner h2 { margin-bottom: 14px; }
+  .cta-banner p  { color: var(--muted); margin-bottom: 36px; font-size: 1rem; }
+
+  /* ══════════════════════════════════════════════════════════
+     FOOTER
+  ══════════════════════════════════════════════════════════ */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0;
+    position: relative;
+    z-index: 1;
+  }
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .footer-logo {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: .9rem;
+    color: var(--green);
+  }
+  .footer-links {
+    display: flex; gap: 24px; list-style: none;
+  }
+  .footer-links a {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--text); }
+  .footer-note {
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    color: var(--border);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     ANIMATIONS
+  ══════════════════════════════════════════════════════════ */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity .6s ease, transform .6s ease;
+  }
+  .fade-up.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Responsive ───────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .hero-content      { grid-template-columns: 1fr; }
+    .hero-mockup       { display: none; }
+    .features-grid     { grid-template-columns: 1fr 1fr; }
+    .install-steps     { grid-template-columns: 1fr; }
+    .nav-links         { display: none; }
+    .cta-banner        { padding: 40px 28px; }
+  }
+  @media (max-width: 480px) {
+    .features-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══════════════════════════════════════════════════ -->
+<nav>
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo"><span class="hex">⬡</span> CraftLaunch</a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#versions">Versions</a></li>
+        <li><a href="#install">Install</a></li>
+      </ul>
+      <a href="https://github.com/arterburnjosiah11-stack/CraftLaunch" target="_blank" class="nav-badge" style="text-decoration:none;cursor:pointer">● View on GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ HERO ══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-text fade-up">
+        <p class="hero-eyebrow">Minecraft Launcher</p>
+        <h1>
+          Launch<br>
+          <span class="accent">Minecraft</span><br>
+          <span class="dim">Your Way.</span>
+        </h1>
+        <p class="hero-desc">
+          CraftLaunch is a fast, lightweight desktop launcher for Minecraft.
+          Switch versions instantly, manage profiles, and tune your JVM — all from a slick dark UI.
+        </p>
+        <div class="btn-row">
+          <a href="https://github.com/arterburnjosiah11-stack/CraftLaunch/releases/latest/download/CraftLaunch.zip" class="btn btn-primary" download>
+            ↓ Download (.zip)
+          </a>
+          <a href="#install" class="btn btn-outline">
+            How to Install →
+          </a>
+        </div>
+      </div>
+
+      <div class="hero-mockup fade-up" style="transition-delay:.2s">
+        <div class="mockup-window">
+          <div class="window-bar">
+            <div class="dot dot-r"></div>
+            <div class="dot dot-y"></div>
+            <div class="dot dot-g"></div>
+            <span class="window-title">CraftLaunch — Minecraft Launcher</span>
+          </div>
+          <div class="window-body">
+            <div class="mock-left">
+              <div class="mock-label">Player Profile</div>
+              <div class="mock-field"></div>
+              <div class="mock-select"><span class="mock-select-text">Default Profile</span></div>
+              <div class="mock-label">Version</div>
+              <div class="mock-select"><span class="mock-select-text">1.21.4 (Latest)</span></div>
+              <div class="mock-label" style="margin-top:14px;">RAM</div>
+              <div class="mock-field" style="height:20px; background:linear-gradient(90deg,#22c55e 50%,#080b10 50%);"></div>
+              <div style="margin-top:20px;"></div>
+              <div class="mock-launch">▶ LAUNCH GAME</div>
+            </div>
+            <div class="mock-right">
+              <div class="mock-log">
+                <div class="log-line"><span class="log-ok">✦</span><span class="log-text">CraftLaunch ready.</span></div>
+                <div class="log-line"><span class="log-dim">────────────────</span></div>
+                <div class="log-line"><span class="log-info">▶</span><span class="log-text">Launching 1.21.4</span></div>
+                <div class="log-line"><span class="log-ok">✔</span><span class="log-text">Verifying Java…</span></div>
+                <div class="log-line"><span class="log-ok">✔</span><span class="log-text">Checking files…</span></div>
+                <div class="log-line"><span class="log-ok">✔</span><span class="log-text">Loading assets…</span></div>
+                <div class="log-line"><span class="log-ok">✔</span><span class="log-text">Auth session…</span></div>
+                <div class="log-line"><span class="log-ok">✔</span><span class="log-text">Starting JVM…</span></div>
+                <div class="log-line"><span class="log-ok">★</span><span class="log-text" style="color:#4ade80;">Launched!</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FEATURES ══════════════════════════════════════════════ -->
+<section class="section" id="features">
+  <div class="container">
+    <p class="section-label fade-up">What's Inside</p>
+    <h2 class="fade-up">Everything you need<br>to play Minecraft.</h2>
+    <p class="section-sub fade-up">Built with Java Swing, CraftLaunch runs on Windows, macOS, and Linux with no extra software needed beyond a JRE.</p>
+    <div class="features-grid">
+      <div class="feat-card fade-up">
+        <span class="feat-icon">🗂</span>
+        <div class="feat-title">Profile Manager</div>
+        <div class="feat-desc">Create and switch between multiple player profiles — survival, creative, SMP, and more — without re-entering settings.</div>
+      </div>
+      <div class="feat-card fade-up" style="transition-delay:.1s">
+        <span class="feat-icon">⚡</span>
+        <div class="feat-title">Version Switcher</div>
+        <div class="feat-desc">Jump between any Minecraft release from 1.8.9 to 1.21.4, LTS builds, or the latest snapshots in a single click.</div>
+      </div>
+      <div class="feat-card fade-up" style="transition-delay:.2s">
+        <span class="feat-icon">🧠</span>
+        <div class="feat-title">RAM Control</div>
+        <div class="feat-desc">Slide to allocate 1–16 GB of RAM to the JVM. No more editing launch scripts or config files by hand.</div>
+      </div>
+      <div class="feat-card fade-up" style="transition-delay:.3s">
+        <span class="feat-icon">📋</span>
+        <div class="feat-title">Live Launch Log</div>
+        <div class="feat-desc">Watch every step of the launch process in a real-time terminal-style log. Know exactly what's happening.</div>
+      </div>
+      <div class="feat-card fade-up" style="transition-delay:.4s">
+        <span class="feat-icon">🌑</span>
+        <div class="feat-title">Dark Theme UI</div>
+        <div class="feat-desc">A carefully designed dark interface with an animated glow button. Easy on the eyes at any hour.</div>
+      </div>
+      <div class="feat-card fade-up" style="transition-delay:.5s">
+        <span class="feat-icon">☕</span>
+        <div class="feat-title">Cross-Platform</div>
+        <div class="feat-desc">A single .jar file runs anywhere Java 17+ is installed — Windows, macOS, or Linux. No installation wizard needed.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ VERSIONS ══════════════════════════════════════════════ -->
+<section class="versions-section" id="versions">
+  <div class="container">
+    <p class="section-label fade-up">Supported Versions</p>
+    <h2 class="fade-up">From Classic to Latest.</h2>
+    <div class="versions-grid">
+      <div class="ver-badge fade-up"><span class="ver-num">1.21.4</span><span class="ver-tag latest">● Latest</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.21.1</span><span class="ver-tag">Stable</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.20.4</span><span class="ver-tag">Stable</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.20.1</span><span class="ver-tag">LTS</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.19.4</span><span class="ver-tag">Legacy</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.18.2</span><span class="ver-tag">Legacy</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.16.5</span><span class="ver-tag">Classic</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.12.2</span><span class="ver-tag">Classic</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">1.8.9</span><span class="ver-tag">PVP Classic</span></div>
+      <div class="ver-badge fade-up"><span class="ver-num">24w09a</span><span class="ver-tag snapshot">⬡ Snapshot</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ INSTALL ═══════════════════════════════════════════════ -->
+<section class="section" id="install">
+  <div class="container">
+    <p class="section-label fade-up">Get Started</p>
+    <h2 class="fade-up">Up and running<br>in 3 steps.</h2>
+    <div class="install-steps">
+      <div class="step-card fade-up">
+        <div class="step-title">Install Java</div>
+        <div class="step-desc">CraftLaunch needs Java 17 or newer. Download it free from Adoptium if you don't already have it.</div>
+        <div class="step-code">https://adoptium.net/</div>
+      </div>
+      <div class="step-card fade-up" style="transition-delay:.15s">
+        <div class="step-title">Download the JAR</div>
+        <div class="step-desc">Download <code>CraftLaunch.zip</code> from <a href="https://github.com/arterburnjosiah11-stack/CraftLaunch/releases/latest" style="color:var(--green)" target="_blank">the latest release</a>, then extract it anywhere on your computer.</div>
+        <div class="step-code">CraftLaunch.zip (~70 KB)</div>
+      </div>
+      <div class="step-card fade-up" style="transition-delay:.3s">
+        <div class="step-title">Run It</div>
+        <div class="step-desc">Double-click the JAR, or launch from the terminal. Windows users can use the included <code>launch.bat</code>.</div>
+        <div class="step-code">java -jar CraftLaunch.jar</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA ═══════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="cta-banner fade-up">
+    <h2>Ready to Play?</h2>
+    <p>Download CraftLaunch, pick your version, and jump in.</p>
+    <div class="btn-row" style="justify-content:center;">
+      <a href="https://github.com/arterburnjosiah11-stack/CraftLaunch/releases/latest/download/CraftLaunch.zip" class="btn btn-primary" download>↓ Download CraftLaunch.zip</a>
+      <a href="https://github.com/arterburnjosiah11-stack/CraftLaunch" class="btn btn-outline" target="_blank">View on GitHub ↗</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════ -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span class="footer-logo">⬡ CraftLaunch</span>
+      <ul class="footer-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#versions">Versions</a></li>
+        <li><a href="#install">Install</a></li>
+      </ul>
+      <span class="footer-note">Not affiliated with Mojang / Microsoft</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Fade-up on scroll
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+  // Toast notification
+  function showDownloadTip() {
+    let toast = document.getElementById('dl-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'dl-toast';
+      toast.style.cssText = `
+        position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(80px);
+        background:#111722; border:1px solid #4ade80; border-radius:10px;
+        padding:16px 24px; font-family:'Space Mono',monospace; font-size:.82rem;
+        color:#e2e8f4; z-index:9999; box-shadow:0 0 30px rgba(74,222,128,.25);
+        transition:transform .3s ease, opacity .3s ease; opacity:0; max-width:360px; text-align:center;
+      `;
+      toast.innerHTML = '<span style="color:#4ade80">⬡</span> Download <strong>CraftLaunch.jar</strong> from the <strong style="color:#4ade80">file attachments</strong> above this chat — look for the paperclip icon or file card labelled <em>CraftLaunch</em>.';
+      document.body.appendChild(toast);
+    }
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(80px)';
+    }, 5000);
+  }
+
+  // Animated log in mockup (loops)
+  const lines = document.querySelectorAll('.log-line');
+  let idx = 0;
+  lines.forEach(l => l.style.opacity = '0');
+  function showNext() {
+    if (idx < lines.length) {
+      lines[idx].style.opacity = '1';
+      lines[idx].style.transition = 'opacity .3s';
+      idx++;
+      setTimeout(showNext, 500);
+    } else {
+      setTimeout(() => {
+        lines.forEach(l => l.style.opacity = '0');
+        idx = 0;
+        setTimeout(showNext, 800);
+      }, 3000);
+    }
+  }
+  setTimeout(showNext, 1000);
+</script>
+</body>
+</html>
